@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Khmer Library - Free Public Photo Gallery</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fdf4ff',
+                            500: '#a855f7',
+                            600: '#9333ea',
+                            700: '#7e22ce',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 min-h-screen flex flex-col transition-colors duration-300">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-purple-600 to-pink-500 text-white p-2 rounded-xl shadow-md">
+                    <i class="fa-solid fa-camera-retro text-xl"></i>
+                </div>
+                <span class="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent">𝐃𝐢𝐠𝐢𝐭𝐚𝐥 𝐊𝐡𝐦𝐞𝐫 𝐋𝐢𝐛𝐫𝐚𝐫𝐲</span>
+            </div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- Theme Toggle -->
+                <button id="themeToggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                    <i class="fa-solid fa-moon dark:hidden text-gray-600 text-lg"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-yellow-400 text-lg"></i>
+                </button>
+                <!-- Upload Button (Protected) -->
+                <button onclick="checkAdminAccess()" class="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-4 py-2 rounded-full font-medium shadow-lg hover:opacity-90 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Post Photo</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <!-- Hero section -->
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl mb-3">Explore My Documenting</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">A free public Documenting curated by Digital Khmer Library.</p>
+        </div>
+
+        <!-- Search Bar Section -->
+        <div class="max-w-md mx-auto mb-10">
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-400">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Search by title or author..." class="w-full pl-11 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm focus:ring-2 focus:ring-purple-500 outline-none text-sm transition">
+            </div>
+        </div>
+
+        <!-- Gallery Grid -->
+        <div id="photoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Dynamic content injected here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-20">
+            <div class="text-gray-400 dark:text-gray-600 text-6xl mb-4">
+                <i class="fa-regular fa-images"></i>
+            </div>
+            <h3 class="text-xl font-medium text-gray-700 dark:text-gray-300">No photos found</h3>
+            <p class="text-gray-500 text-sm mt-1">Try searching for something else or check back later.</p>
+            <button id="emptyUploadBtn" onclick="checkAdminAccess()" class="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition hidden">Upload Photo</button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+        <p>&copy; 2026 Digital Khmer Library. All rights reserved.</p>
+    </footer>
+
+    <!-- Upload Modal (Admin Only) -->
+    <div id="uploadModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 dark:border-gray-700 transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Post a New Photo</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="uploadForm" onsubmit="handleUpload(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Image</label>
+                    <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-purple-500 transition cursor-pointer relative" onclick="document.getElementById('imageFile').click()">
+                        <input type="file" id="imageFile" accept="image/*" class="hidden" required onchange="previewImage(event)">
+                        <div id="dropzoneText">
+                            <i class="fa-solid fa-cloud-arrow-up text-3xl text-purple-500 mb-2"></i>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Click to browse or drag & drop</p>
+                            <p class="text-xs text-gray-400 mt-1">PNG, JPG, WEBP up to 5MB</p>
+                        </div>
+                        <img id="imagePreview" class="hidden max-h-48 mx-auto rounded-lg object-contain">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Author / Credit Name</label>
+                    <input type="text" id="authorName" required placeholder="e.g. Digital Khmer Library" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent focus:ring-2 focus:ring-purple-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Photo Title / Caption</label>
+                    <input type="text" id="photoTitle" required placeholder="e.g. Historic Temple View" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent focus:ring-2 focus:ring-purple-500 outline-none">
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition">Cancel</button>
+                    <button type="submit" id="submitBtn" class="bg-gradient-to-r from-purple-600 to-pink-500 text-white px-6 py-2 rounded-lg font-medium shadow-md hover:opacity-90 transition">Post</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Photo Detail Modal (Lightbox & Comments) -->
+    <div id="detailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md hidden p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col md:flex-row overflow-hidden shadow-2xl relative">
+            <button onclick="closeDetailModal()" class="absolute top-3 right-3 z-10 bg-black/50 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/70 transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            
+            <!-- Left: Image Preview -->
+            <div class="md:w-3/5 bg-black flex items-center justify-center relative min-h-[300px]">
+                <img id="detailImage" class="max-h-[80vh] max-w-full object-contain">
+            </div>
+
+            <!-- Right: Details & Comments -->
+            <div class="md:w-2/5 flex flex-col h-[500px] md:h-auto">
+                <!-- Header Info -->
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold" id="detailAvatar">D</div>
+                    <div>
+                        <h4 class="font-bold text-sm" id="detailAuthor">Author Name</h4>
+                        <p class="text-xs text-gray-500" id="detailDate">Today</p>
+                    </div>
+                </div>
+
+                <!-- Title & Actions -->
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h3 class="font-semibold text-lg mb-2" id="detailTitle">Photo Title</h3>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="likeCurrentPhoto()" class="flex items-center space-x-1 text-gray-600 dark:text-gray-300 hover:text-red-500 transition">
+                            <i id="detailLikeIcon" class="fa-regular fa-heart text-xl"></i>
+                            <span id="detailLikesCount" class="font-medium text-sm">0</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Comments List -->
+                <div id="commentsList" class="flex-grow p-4 overflow-y-auto space-y-3 text-sm">
+                    <!-- Dynamic comments -->
+                </div>
+
+                <!-- Add Comment Form -->
+                <form onsubmit="handleComment(event)" class="p-3 border-t border-gray-200 dark:border-gray-700 flex space-x-2">
+                    <input type="text" id="commentInput" placeholder="Add a comment..." required class="flex-grow px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent focus:ring-2 focus:ring-purple-500 outline-none">
+                    <button type="submit" class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition">Post</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Set your private admin password here
+        const ADMIN_PASSWORD = "224178";
+
+        // Theme toggling
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+        });
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Database simulation via LocalStorage
+        let photos = JSON.parse(localStorage.getItem('snapshare_photos')) || [
+            {
+                id: 1,
+                title: "Angkor Wat Sunrise",
+                author: "Digital Khmer Library",
+                url: "https://images.unsplash.com/photo-1543857778-c4a1eb5e0e2c?auto=format&fit=crop&w=800&q=80",
+                date: "2 hours ago",
+                likes: 42,
+                liked: false,
+                comments: [
+                    { author: "Sophea", text: "Magnificent view of our heritage!" }
+                ]
+            },
+            {
+                id: 2,
+                title: "Traditional Apsara Dance",
+                author: "Digital Khmer Library",
+                url: "https://images.unsplash.com/photo-1599813898399-8d66cf37d14d?auto=format&fit=crop&w=800&q=80",
+                date: "Yesterday",
+                likes: 31,
+                liked: false,
+                comments: []
+            }
+        ];
+
+        let activePhotoId = null;
+        let searchQuery = '';
+
+        function checkAdminAccess() {
+            if (sessionStorage.getItem('isAdmin') === 'true') {
+                openModal();
+                return;
+            }
+
+            let password = prompt("Enter admin password to post photos:");
+            if (password === ADMIN_PASSWORD) {
+                sessionStorage.setItem('isAdmin', 'true');
+                openModal();
+            } else if (password !== null) {
+                alert("Incorrect password! Only the site owner can post photos.");
+            }
+        }
+
+        function saveAndRender() {
+            localStorage.setItem('snapshare_photos', JSON.stringify(photos));
+            renderPhotos();
+        }
+
+        function handleSearch() {
+            searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+            renderPhotos();
+        }
+
+        function renderPhotos() {
+            const grid = document.getElementById('photoGrid');
+            const emptyState = document.getElementById('emptyState');
+            const emptyUploadBtn = document.getElementById('emptyUploadBtn');
+            grid.innerHTML = '';
+
+            // Filter photos based on search input
+            const filteredPhotos = photos.filter(photo => 
+                photo.title.toLowerCase().includes(searchQuery) || 
+                photo.author.toLowerCase().includes(searchQuery)
+            );
+
+            if (filteredPhotos.length === 0) {
+                emptyState.classList.remove('hidden');
+                if (sessionStorage.getItem('isAdmin') === 'true') {
+                    emptyUploadBtn.classList.remove('hidden');
+                } else {
+                    emptyUploadBtn.classList.add('hidden');
+                }
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            filteredPhotos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition duration-300 flex flex-col group border border-gray-100 dark:border-gray-700";
+                
+                card.innerHTML = `
+                    <div class="relative overflow-hidden cursor-pointer aspect-square bg-gray-100 dark:bg-gray-900" onclick="openDetailModal(${photo.id})">
+                        <img src="${photo.url}" alt="${photo.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow justify-between">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-purple-600 transition" onclick="openDetailModal(${photo.id})">${photo.title}</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">By ${photo.author}</p>
+                        </div>
+                        <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 text-sm">
+                            <button onclick="toggleLike(${photo.id}, event)" class="flex items-center space-x-1.5 text-gray-600 dark:text-gray-300 hover:text-red-500 transition">
+                                <i class="fa-${photo.liked ? 'solid text-red-500' : 'regular'} fa-heart text-base"></i>
+                                <span>${photo.likes}</span>
+                            </button>
+                            <button onclick="openDetailModal(${photo.id})" class="flex items-center space-x-1.5 text-gray-600 dark:text-gray-300 hover:text-purple-500 transition">
+                                <i class="fa-regular fa-comment"></i>
+                                <span>${photo.comments.length}</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Modal Controls
+        function openModal() {
+            document.getElementById('uploadModal').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('uploadModal').classList.add('hidden');
+            document.getElementById('uploadForm').reset();
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('dropzoneText').classList.remove('hidden');
+        }
+
+        // Image Preview Handler
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    document.getElementById('dropzoneText').classList.add('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Handle Upload Submission
+        function handleUpload(event) {
+            event.preventDefault();
+            
+            if (sessionStorage.getItem('isAdmin') !== 'true') {
+                alert("Unauthorized action.");
+                closeModal();
+                return;
+            }
+
+            const fileInput = document.getElementById('imageFile');
+            const author = document.getElementById('authorName').value;
+            const title = document.getElementById('photoTitle').value;
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const newPhoto = {
+                        id: Date.now(),
+                        title: title,
+                        author: author,
+                        url: e.target.result,
+                        date: "Just now",
+                        likes: 0,
+                        liked: false,
+                        comments: []
+                    };
+                    photos.unshift(newPhoto);
+                    saveAndRender();
+                    closeModal();
+                }
+                reader.readAsDataURL(fileInput.files[0]);
+            }
+        }
+
+        // Likes Logic
+        function toggleLike(id, event) {
+            if(event) event.stopPropagation();
+            const photo = photos.find(p => p.id === id);
+            if (photo) {
+                photo.liked = !photo.liked;
+                photo.likes += photo.liked ? 1 : -1;
+                saveAndRender();
+                if (activePhotoId === id) {
+                    updateDetailModalContent();
+                }
+            }
+        }
+
+        function likeCurrentPhoto() {
+            if (activePhotoId) {
+                toggleLike(activePhotoId);
+            }
+        }
+
+        // Detail / Comment Modal
+        function openDetailModal(id) {
+            activePhotoId = id;
+            updateDetailModalContent();
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            activePhotoId = null;
+        }
+
+        function updateDetailModalContent() {
+            const photo = photos.find(p => p.id === activePhotoId);
+            if (!photo) return;
+
+            document.getElementById('detailImage').src = photo.url;
+            document.getElementById('detailAuthor').textContent = photo.author;
+            document.getElementById('detailAvatar').textContent = photo.author.charAt(0).toUpperCase();
+            document.getElementById('detailTitle').textContent = photo.title;
+            document.getElementById('detailDate').textContent = photo.date;
+            document.getElementById('detailLikesCount').textContent = photo.likes;
+            
+            const likeIcon = document.getElementById('detailLikeIcon');
+            if (photo.liked) {
+                likeIcon.className = "fa-solid fa-heart text-xl text-red-500";
+            } else {
+                likeIcon.className = "fa-regular fa-heart text-xl";
+            }
+
+            const commentsList = document.getElementById('commentsList');
+            commentsList.innerHTML = '';
+            if (photo.comments.length === 0) {
+                commentsList.innerHTML = `<p class="text-gray-400 text-center py-6">No comments yet. Be the first to comment!</p>`;
+            } else {
+                photo.comments.forEach(c => {
+                    const commentEl = document.createElement('div');
+                    commentEl.className = "bg-gray-50 dark:bg-gray-700/50 p-2.5 rounded-lg";
+                    commentEl.innerHTML = `<span class="font-bold text-xs text-purple-600 dark:text-purple-400 mr-2">${c.author}</span><span class="text-gray-700 dark:text-gray-300 text-xs">${c.text}</span>`;
+                    commentsList.appendChild(commentEl);
+                });
+            }
+        }
+
+        function handleComment(event) {
+            event.preventDefault();
+            const input = document.getElementById('commentInput');
+            const text = input.value.trim();
+            if (!text || !activePhotoId) return;
+
+            const photo = photos.find(p => p.id === activePhotoId);
+            if (photo) {
+                photo.comments.push({
+                    author: "Visitor",
+                    text: text
+                });
+                input.value = '';
+                saveAndRender();
+                updateDetailModalContent();
+            }
+        }
+
+        // Initial render on load
+        renderPhotos();
+    </script>
+</body>
+</html>
