@@ -139,7 +139,8 @@
                     <h5 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Comments</h5>
                     <div id="commentsList" class="space-y-2 max-h-32 overflow-y-auto"></div>
                     <form onsubmit="handleComment(event)" class="mt-3 flex space-x-2">
-                        <input type="text" id="commentInput" placeholder="Add a comment..." class="flex-grow p-3 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <input type="text" id="commentAuthor" placeholder="Your name..." required class="w-1/3 p-3 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <input type="text" id="commentInput" placeholder="Add a comment..." required class="flex-grow p-3 text-xs rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500">
                         <button type="submit" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-semibold rounded-xl shadow-md">Post</button>
                     </form>
                 </div>
@@ -178,10 +179,10 @@
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
         } catch (err) {
-            console.warn("Supabase initialization skipped, using local fallback.");
+            console.warn("Supabase initialization skipped.");
         }
 
-        let photos = JSON.parse(localStorage.getItem('local_photos') || '[]');
+        let photos = [];
         let activePhotoId = null;
         let currentImageIndex = 0;
         let searchQuery = '';
@@ -213,10 +214,11 @@
                     if (!error && data) {
                         photos = data;
                         renderPhotos();
+                        if (activePhotoId !== null) updateDetailModalContent();
                         return;
                     }
                 } catch (e) {
-                    console.warn("Cloud fetch failed, using local storage cache.");
+                    console.warn("Cloud fetch failed.");
                 }
             }
             renderPhotos();
@@ -268,7 +270,7 @@
                         </div>
                         <div class="flex items-center justify-between mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 text-sm">
                             <button onclick="toggleLike(${photo.id}, event)" class="flex items-center space-x-1.5 text-gray-600 dark:text-gray-300 hover:text-red-500 transition">
-                                <i class="fa-${photo.liked ? 'solid text-red-500' : 'regular'} fa-heart text-base"></i>
+                                <i class="fa-regular fa-heart text-base text-gray-500"></i>
                                 <span>${photo.likes || 0}</span>
                             </button>
                             <div class="flex items-center space-x-3">
@@ -353,20 +355,17 @@
                 urls: uploadedImagesBase64,
                 date: "Just now",
                 likes: 0,
-                liked: false,
                 comments: []
             };
 
             if (supabaseClient) {
                 try {
                     await supabaseClient.from('DigitalLibrary').insert([newPost]);
-                } catch(e) { console.warn("Cloud save skipped."); }
+                } catch(e) { console.warn("Cloud save failed."); }
             }
 
-            photos.unshift(newPost);
-            localStorage.setItem('local_photos', JSON.stringify(photos));
             closeModal();
-            renderPhotos();
+            fetchPhotos();
         }
 
         async function deletePhoto(id, event) {
@@ -377,27 +376,56 @@
                 if (supabaseClient) {
                     try { await supabaseClient.from('DigitalLibrary').delete().eq('id', id); } catch(e){}
                 }
-                photos = photos.filter(p => p.id !== id);
-                localStorage.setItem('local_photos', JSON.stringify(photos));
                 closeDetailModal();
                 closeFullScreenViewer();
-                renderPhotos();
+                fetchPhotos();
             }
         }
 
         async function toggleLike(id, event) {
             if(event) event.stopPropagation();
             const photo = photos.find(p => p.id === id);
-            if (photo) {
-                photo.liked = !photo.liked;
-                photo.likes = (photo.likes || 0) + (photo.liked ? 1 : -1);
-                localStorage.setItem('local_photos', JSON.stringify(photos));
-                renderPhotos();
-                if (activePhotoId === id) updateDetailModalContent();
+            if (!photo) return;
+
+            photo.likes = (photo.likes || 0) + 1;
+
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('DigitalLibrary').update({ likes: photo.likes }).eq('id', id);
+                } catch(e) { console.warn("Cloud like failed."); }
             }
+            renderPhotos();
+            if (activePhotoId === id) updateDetailModalContent();
         }
 
         function likeCurrentPhoto() { if (activePhotoId) toggleLike(activePhotoId); }
+
+        async function handleComment(event) {
+            event.preventDefault();
+            if (!activePhotoId) return;
+
+            const authorInput = document.getElementById('commentAuthor');
+            const textInput = document.getElementById('commentInput');
+
+            const newComment = {
+                author: authorInput.value.trim(),
+                text: textInput.value.trim()
+            };
+
+            const photo = photos.find(p => p.id === activePhotoId);
+            if (!photo) return;
+
+            const updatedComments = photo.comments ? [...photo.comments, newComment] : [newComment];
+
+            if (supabaseClient) {
+                try {
+                    await supabaseClient.from('DigitalLibrary').update({ comments: updatedComments }).eq('id', activePhotoId);
+                } catch(e) { console.warn("Cloud comment failed."); }
+            }
+
+            textInput.value = '';
+            fetchPhotos();
+        }
 
         function openDetailModal(id) {
             activePhotoId = id;
@@ -452,12 +480,15 @@
                 document.getElementById('fsCounter').textContent = `${currentImageIndex + 1} / ${photo.urls.length}`;
             }
 
-            document.getElementById('detailLikeIcon').className = photo.liked ? "fa-solid fa-heart text-lg text-red-500" : "fa-regular fa-heart text-lg text-gray-500";
-
             const commentsList = document.getElementById('commentsList');
             commentsList.innerHTML = (!photo.comments || photo.comments.length === 0) 
                 ? `<p class="text-gray-400 text-center py-4 text-xs">No comments yet.</p>`
-                : photo.comments.map(c => `<div class="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-xl text-xs"><span class="font-bold text-purple-600 dark:text-purple-400 mr-2">${c.author}</span><span class="text-gray-700 dark:text-gray-300">${c.text}</span></div>`).join('');
+                : photo.comments.map(c => `
+                    <div class="bg-gray-50 dark:bg-gray-800/50 p-2.5 rounded-xl text-xs">
+                        <span class="font-bold text-purple-600 dark:text-purple-400 mr-2">${c.author}</span>
+                        <span class="text-gray-700 dark:text-gray-300">${c.text}</span>
+                    </div>
+                `).join('');
         }
 
         function openFullScreenViewer() { document.getElementById('fullScreenViewer').classList.remove('hidden'); }
@@ -467,8 +498,11 @@
             if (e.key === 'Escape') { closeFullScreenViewer(); closeDetailModal(); closeModal(); }
         });
 
-        // Initialize App
+        // Initialize App and fetch live posts from cloud database
         fetchPhotos();
+        
+        // Auto-refresh data every 5 seconds so likes/comments from others appear live
+        setInterval(fetchPhotos, 5000);
     </script>
 </body>
 </html>
