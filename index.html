@@ -171,6 +171,7 @@
 
         const SUPABASE_URL = 'https://mivcbuhieuydedcwfebc.supabase.co'; 
         const SUPABASE_ANON_KEY = 'sb_publishable_FXyKPyOBFi1XK-5K0ZSNZQ_VOH_84y5'; 
+        const ADMIN_PASSWORD = "224178";
 
         let supabaseClient = null;
         try {
@@ -187,32 +188,20 @@
         let searchQuery = '';
         let uploadedImagesBase64 = [];
 
-        async function verifyAdmin() {
+        function verifyAdmin() {
             if (sessionStorage.getItem('isAdmin') === 'true') return true;
             let password = prompt("Enter admin password:");
-            if (password === null) return false;
-
-            try {
-                const { data, error } = await supabaseClient.functions.invoke('smooth-handler', {
-                    body: { password: password },
-                });
-
-                if (error || !data || !data.success) {
-                    alert("Incorrect password!");
-                    return false;
-                }
-
+            if (password === ADMIN_PASSWORD) {
                 sessionStorage.setItem('isAdmin', 'true');
                 return true;
-            } catch (err) {
-                console.error("Auth error:", err);
-                alert("Authentication failed.");
-                return false;
+            } else if (password !== null) {
+                alert("Incorrect password!");
             }
+            return false;
         }
 
-        async function checkAdminAccess() {
-            if (await verifyAdmin()) openModal();
+        function checkAdminAccess() {
+            if (verifyAdmin()) openModal();
         }
 
         async function fetchPhotos() {
@@ -381,7 +370,7 @@
 
         async function deletePhoto(id, event) {
             if(event) event.stopPropagation();
-            if (!(await verifyAdmin())) return;
+            if (!verifyAdmin()) return;
 
             if (confirm("Delete this post?")) {
                 if (supabaseClient) {
